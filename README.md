@@ -4,6 +4,8 @@
 
 Sentiment Analysis data application focused on sushi restaurant reviews in New York City. sourced from Google Places API, processed and modeled with dbt & Jupyter notebooks, and stored on Snowflake. The web app is then deployed as a docker container hosed on Azure App Services. 
 
+Dashboard Link: https://sushi-nyc-sentiment-app-eng0h9h0h2fkcbb9.eastus2-01.azurewebsites.net/
+
 ## Code and Resources Used
 
 **Python Version**: 3.12.9
