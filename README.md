@@ -2,7 +2,7 @@
 
 ![alt_text](./readme_images/sushi_sentiment_pipeline.drawio.png "Project Pipeline")
 
-Sentiment Analysis data application focused on sushi restaurant reviews in New York City. sourced from Google Places API, processed and modeled with dbt & Jupyter notebooks, and stored on Snowflake. The web app is then deployed as a docker container hosed on Azure App Services. 
+Sentiment Analysis Web Dashboard focused on sushi restaurant reviews in New York City. sourced from Google Places API, processed and modeled with dbt & Jupyter notebooks, and stored on Snowflake. The web app is then deployed as a docker container hosted on Azure App Services. 
 
 Dashboard Link: https://sushi-nyc-sentiment-app-eng0h9h0h2fkcbb9.eastus2-01.azurewebsites.net/
 
