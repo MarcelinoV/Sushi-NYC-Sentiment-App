@@ -1,6 +1,6 @@
 # Sushi in NYC - A Sentiment Analysis
 
-![alt_text](https://github.com/MarcelinoV/sushi-nyc-sentiment-app/main/readme_images/sushi_sentiment_pipeline.drawio.png "Project Pipeline")
+![alt_text](./readme_images/sushi_sentiment_pipeline.drawio.png "Project Pipeline")
 
 Sentiment Analysis data application focused on sushi restaurant reviews in New York City. sourced from Google Places API, processed and modeled with dbt & Jupyter notebooks, and stored on Snowflake. The web app is then deployed as a docker container hosed on Azure App Services. 
 
@@ -20,7 +20,7 @@ I collected data about sushi restaurants in NYC from the Google Places API, an i
 
 ## Analytics Engineering: Data Transformation & Feature Extraction
 
-![alt_text](https://github.com/MarcelinoV/sushi-nyc-sentiment-app/main/readme_images/sushi_data_model.png "Project Data Model")
+![alt_text](./readme_images/sushi_data_model.png "Project Data Model")
 
 ### Snowflake
 
