@@ -1,0 +1,33 @@
+/* Change the color of the dropdown options to black */
+.Select-menu-outer {
+    color: black !important;
+    background-color: white !important; /* Optional: Set background color */
+}
+
+/* Change the color of the selected options in the dropdown */
+.VirtualizedSelectOption {
+    color: black !important;
+}
+
+/* Change the color of the dropdown input text */
+.Select-control {
+    color: black !important;
+}
+
+.scatter-column-selector {
+    width: 1200;
+}
+
+/* Zoom the entire application to 90% */
+
+body {
+    transform: scale(0.75);
+    transform-origin: top left;
+    width: 117.65%; /* Adjust width to compensate for scaling */
+    height: 117.65%; /* Adjust height accordingly */
+}
+
+/* Color datatable filter input text white*/
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner input:not([type=radio]):not([type=checkbox]){
+    color: white!important;
+}

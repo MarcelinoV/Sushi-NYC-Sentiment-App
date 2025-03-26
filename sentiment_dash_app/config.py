@@ -1,0 +1,8 @@
+import os
+
+ACCOUNT = os.environ["SNOWFLAKE_ACCOUNT_ID"]
+USER = os.environ["SNOWFLAKE_USER"]
+PRIVATE_KEY = os.environ["PRIVATE_KEY"]
+WAREHOUSE = os.environ["SNOWFLAKE_WAREHOUSE"]
+DATABASE = os.environ["SNOWFLAKE_DATABASE"]
+SCHEMA = os.environ["SNOWFLAKE_SCHEMA"]
