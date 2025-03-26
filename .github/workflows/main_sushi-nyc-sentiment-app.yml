@@ -25,6 +25,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./sentiment_dash_app
-          file: ./sentiment_dash_app/Dockerfile
+          file: Dockerfile
           push: true
           tags: ghcr.io/marcelinov/sushi-nyc-sentiment-app:latest
