@@ -3,7 +3,7 @@ dash-bootstrap-components==1.7.1
 plotly==6.0.0
 pandas==2.2.0
 gunicorn==23.0.0
-snowflake-connector-python==3.13.0
+snowflake-connector-python==3.13.1
 azure-identity==1.21.0
 azure-keyvault-secrets==4.9.0
 wordcloud==1.9.4
