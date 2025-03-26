@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: sushi_place_reviews_fact
+    description: "Google Reviews table"
+    columns:
+      - name: review_id
+        tests:
+          - unique
+          - not_null
+
+      - name: place_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('sushi_places_dimension')
+              field: id
+
+      - name: author
+        tests:
+          - not_null
+
+      - name: rating
+        tests:
+          - not_null
+          - no_rating_less_than_0
+
+      - name: text
+        tests:
+          - not_null
+
+      - name: publishtime
+        tests:
+          - not_null
+
+      - name: googlemapsuri
+        tests:
+          - unique
+          - not_null
+
+      - name: load_date
+        tests:
+          - not_null
