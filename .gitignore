@@ -7,6 +7,7 @@ Prepare_Embeddings.ipynb
 google_api_key.txt
 sushi_sentiment_pipeline.drawio
 sushi_data_model_v1.drawio
+requirements_upgraded.txt
 
 # ignore dbt elements
 nyc_sushi_dbt/target/
