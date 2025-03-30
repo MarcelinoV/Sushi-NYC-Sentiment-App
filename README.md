@@ -56,7 +56,7 @@ RoBERTa, which stands for Robustly Optimized BERT Pretraining Approach, is a pow
 
 Plotly Dash is a Python framework that allows data professionals to publish dashboards or other interfaces in the form of web applications so that stakeholders can access the data. In the realm of sentiment analysis, Plotly Dash also offers more options and flexibility in visualizing and communicating insights compared to proprietary reporting tools like Tableau and Power BI. Besides the front-end capabilities, Plotly Dash allows for connection to SQL based databases like Snowflake, which is only possible in Tableau for example when one purchases it.
 
-## CI/CD Deployment: Docker & Azure App Services
+## CI/CD: Docker & Azure App Services
 
 To make deployment & maintenance easier and implement CI/CD (Continuous Integration, Continuous Deployment) pracetices, I deployed my app in a docker container. Docker is an open-source platform that enables developers to package applications and their dependencies into containers, allowing them to be deployed and run consistently across different environments. Because of containerization, the app is server agnostic, which would make migration easier if it is needed, and can horizontally scale, meaning more instances of the app can be created if usage increases. Azure App Services offers these settings and be set to do so dynamically.
 
