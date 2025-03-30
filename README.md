@@ -68,25 +68,21 @@ The design choices I've laid out above are essential to the continuous improveme
 
 Planed Improvements include:
 
-**Data Orchestration**:
-
+##### Data Orchestration:
 - Use an orchestration tool like Prefect or Airflow to automate data refreshes from the GP (Google Places) API to the Snowflake warehouse, updating current records and adding new ones.
 
-**Front End**:
-
+##### Front End
 - Cotinuing improving user experience
     - Organizing dashboard layout for easier navigation.
     - Refining visuals to be more informative and communicative to the nontechnial user.
     - Add more information bubbles that users can hover for useful details on what they are seeing or how to use the application.
 
-**Machine Learning**:
-
+##### Machine Learning:
 - Add a page where users can compare different regression models that predict the overall rating (target variable) of a restaurant based off features from the GP API data Delivery.
     - Purpose of these models would be to answer the question, "Based on data that Google collects, what makes a good sushi restaurant?"
 - Build homemade sentiment model using features surrounding review text and rating as the target variable.
 - Replace "Foody Bert" model with latest Twitter RoBERTa model for comparison with older version.
 
-**AI**:
-
+##### AI:
 - Integrate openai or other AI service into app to allow for AI-informed insights based off data from the Snowflake data warehouse.
     - Such insights would be heavily customizable by the user since the user can prompt exactly what they'd like to know from the AI.
