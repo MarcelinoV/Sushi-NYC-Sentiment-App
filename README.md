@@ -38,7 +38,7 @@ The raw data collected from the Google Places API is stored in Snowflake and is 
 
 ### Sentiment Models
 
-The major feature of this application is to analyze a sushi restaurant through the sentiment of its reviews. This is valuable for not only informing on if a restaurant is performing well but to get a more intimate, on-the-ground insight of what the restaurant is like. For this, we utilize popular sentiment models like NLTK's VADER Sentiment Analysis and HuggingFace's RoBERTa Transformer models.
+The major feature of this application is to analyze a sushi restaurant through the sentiment of its reviews. This is valuable for not only informing on if a restaurant is performing well but to get a more intimate, on-the-ground insight of what the restaurant is like. For this, we utilize popular sentiment models like NLTK's VADER Sentiment Analysis and HuggingFace's RoBERTa Transformer models. The outputs of these models when ran on our review data make up the fields of the *sushi_review_sentiment_fact* table.
 
 #### NLTK VADER
 
