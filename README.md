@@ -12,7 +12,7 @@ Dashboard Link: https://sushi-nyc-sentiment-app-eng0h9h0h2fkcbb9.eastus2-01.azur
 
 **Packages**: dash, dash_bootstrap_components, plotly-express, pandas, snowflake-connector, wordcloud, numpy, nltk, re, transformers, scipy, requests
 
-**Technologies**: SQL, Snowflake, DBT, Docker, Git, Github Actions, Microsoft Azure
+**Technologies**: SQL, Snowflake, DBT, Docker, Git, GitHub Actions, Microsoft Azure
 
 **Data Source**: [Google Places API](https://developers.google.com/maps/documentation/places/web-service/text-search)
 
@@ -42,15 +42,51 @@ The major feature of this application is to analyze a sushi restaurant through t
 
 #### NLTK VADER
 
+![alt_text](./readme_images/nltk_vader_review_sentiment_visualized.png "VADER review sentiment score visualized in 3D Scatter. Sourced from App")
+
 VADER, or Valence Aware Dictionary and sEntiment Reasoner, is a lexicon and rule-based sentiment analysis tool that is specifically attuned to sentiments expressed in social media, and works well on texts from other domains. Being a rule-based model that uses a preset lexicon however, the model can fail to recognize sarcasm or context in language.
 
 #### HuggingFace Transformers: RoBERTa
+
+![alt_text](./readme_images/twitter_roberta_review_sentiment_visualized.png "Twitter-roBERTa review sentiment score visualized in 3D Scatter. Sourced from App")
 
 RoBERTa, which stands for Robustly Optimized BERT Pretraining Approach, is a powerful machine learning model pre-trained on a large corupus of text for NLP tasks. Specifically, its a variant of BERT, a neural network architecture designed for understanding the context of words in text. RoBERTa is optimized for improved performance and efficiency in various NLP tasks.
 
 ## Plotly Dash
 
-## Deployment: Docker & Azure App Services
+Plotly Dash is a Python framework that allows data professionals to publish dashboards or other interfaces in the form of web applications so that stakeholders can access the data. In the realm of sentiment analysis, Plotly Dash also offers more options and flexibility in visualizing and communicating insights compared to proprietary reporting tools like Tableau and Power BI. Besides the front-end capabilities, Plotly Dash allows for connection to SQL based databases like Snowflake, which is only possible in Tableau for example when one purchases it.
 
-## CI/CD: Future Improvements
+## CI/CD Deployment: Docker & Azure App Services
 
+To make deployment & maintenance easier and implement CI/CD (Continuous Integration, Continuous Deployment) pracetices, I deployed my app in a docker container. Docker is an open-source platform that enables developers to package applications and their dependencies into containers, allowing them to be deployed and run consistently across different environments. Because of containerization, the app is server agnostic, which would make migration easier if it is needed, and can horizontally scale, meaning more instances of the app can be created if usage increases. Azure App Services offers these settings and be set to do so dynamically.
+
+GitHub Actions plays a role as well, facilitating deployment of containerized apps while hosting your code at the same time. GitHub Actions is a CI/CD (Continuous Integration/Continuous Delivery) platform that allows you to automate your software development workflows, including building, testing, and deploying your applications directly from your GitHub repository. GitHub Actions knows how to construct a workflow by reading the YAML file at the root of the app directory. The workflow is a sequence of automated tasks that can be configured to run in response to code pushes, pulls, or issues through the YAML file. YAML files are a powerful feature CI/CD development because they allow for automated testing and configuration depending on repository events or changes in team priorities.
+
+## Future Improvements
+
+The design choices I've laid out above are essential to the continuous improvement of the sushi dashboard. This application has potential for integrating Machine Learning and AI capabilities to enhance the user experience and refine the insights further. Not to mention other data that can be made accessible in a future update.
+
+Planed Improvements include:
+
+**Data Orchestration**:
+
+- Use an orchestration tool like Prefect or Airflow to automate data refreshes from the GP (Google Places) API to the Snowflake warehouse, updating current records and adding new ones.
+
+**Front End**:
+
+- Cotinuing improving user experience
+    - Organizing dashboard layout for easier navigation.
+    - Refining visuals to be more informative and communicative to the nontechnial user.
+    - Add more information bubbles that users can hover for useful details on what they are seeing or how to use the application.
+
+**Machine Learning**:
+
+- Add a page where users can compare different regression models that predict the overall rating (target variable) of a restaurant based off features from the GP API data Delivery.
+    - Purpose of these models would be to answer the question, "Based on data that Google collects, what makes a good sushi restaurant?"
+- Build homemade sentiment model using features surrounding review text and rating as the target variable.
+- Replace "Foody Bert" model with latest Twitter RoBERTa model for comparison with older version.
+
+**AI**:
+
+- Integrate openai or other AI service into app to allow for AI-informed insights based off data from the Snowflake data warehouse.
+    - Such insights would be heavily customizable by the user since the user can prompt exactly what they'd like to know from the AI.
