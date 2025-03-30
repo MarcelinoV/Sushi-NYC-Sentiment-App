@@ -22,7 +22,7 @@ I collected data about sushi restaurants in NYC from the Google Places API, an i
 
 One for the location-related data, *raw_sushi_places*, and another for the reviews for each restaurant, *raw_sushi_reviews*. The dataframes are linked by a unique ID each location is assigned.
 
-## Analytics Engineering: Data Transformation & Feature Extraction
+## Data Transformation & Feature Extraction
 
 ![alt_text](./readme_images/sushi_data_model.png "Project Data Model")
 
@@ -38,11 +38,17 @@ The raw data collected from the Google Places API is stored in Snowflake and is 
 
 ### Sentiment Models
 
+The major feature of this application is to analyze a sushi restaurant through the sentiment of its reviews. This is valuable for not only informing on if a restaurant is performing well but to get a more intimate, on-the-ground insight of what the restaurant is like. For this, we utilize popular sentiment models like NLTK's VADER Sentiment Analysis and HuggingFace's RoBERTa Transformer models.
+
 #### NLTK VADER
+
+VADER, or Valence Aware Dictionary and sEntiment Reasoner, is a lexicon and rule-based sentiment analysis tool that is specifically attuned to sentiments expressed in social media, and works well on texts from other domains. Being a rule-based model that uses a preset lexicon however, the model can fail to recognize sarcasm or context in language.
 
 #### HuggingFace Transformers: RoBERTa
 
-## Presentation: Plotly Dash
+RoBERTa, which stands for Robustly Optimized BERT Pretraining Approach, is a powerful machine learning model pre-trained on a large corupus of text for NLP tasks. Specifically, its a variant of BERT, a neural network architecture designed for understanding the context of words in text. RoBERTa is optimized for improved performance and efficiency in various NLP tasks.
+
+## Plotly Dash
 
 ## Deployment: Docker & Azure App Services
 
