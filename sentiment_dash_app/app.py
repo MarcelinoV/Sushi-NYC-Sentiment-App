@@ -1088,7 +1088,7 @@ def update_3d_scatter(selected_option):
             aspectmode="cube",  # Keeps all axes equally scaled
         ),
         legend=dict(
-        x=1.3,  # Moves legend outside the plot area
+        x=0.7,  # Moves legend outside the plot area
         y=1,  # Keeps it aligned at the top
         bgcolor="rgba(255,255,255,0.7)",  # Optional: Adds a semi-transparent background
     )
