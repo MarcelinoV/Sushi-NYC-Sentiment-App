@@ -66,10 +66,11 @@ GitHub Actions plays a role as well, facilitating deployment of containerized ap
 
 The design choices I've laid out above are essential to the continuous improvement of the sushi dashboard. This application has potential for integrating Machine Learning and AI capabilities to enhance the user experience and refine the insights further. Not to mention other data that can be made accessible in a future update.
 
-Planed Improvements include:
+Planned Improvements include:
 
 #### Data Orchestration:
 - Use an orchestration tool like Prefect or Airflow to automate data refreshes from the GP (Google Places) API to the Snowflake warehouse, updating current records and adding new ones.
+- Automate Jupyter notebook to load sentiment models, score reviews, and update *sushi_review_sentiment_fact* on a scheduled basis.
 
 #### Front End
 - Cotinuing improving user experience
