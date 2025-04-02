@@ -1,0 +1,20 @@
+    # dbt_project/models/sources/raw_data.yml
+    version: 2
+
+    sources:
+      - name: raw_data_sources
+        database: SUSHI
+        schema: NYC
+        tables:
+          - name: RAW_SUSHI_PLACES
+            description: "Raw data of sushi places"
+          - name: RAW_SUSHI_REVIEWS
+            description: "Raw data of sushi place reviews"
+
+      - name: scored_reviews
+        database: SUSHI
+        schema: NYC
+        tables:
+          - name: "SUSHI_REVIEW_SENTIMENT_FACT"
+            description: "Table of reviews scored by sentiment models, REVIEW_ID PK, PLACE_ID FK"
+      

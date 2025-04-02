@@ -44,7 +44,8 @@ SELECT ID,
     ELSE 'Queens' END AS BOROUGH,
    // REGEXP_SUBSTR(FORMATTEDADDRESS, '^\\d+\\s?(-?)\\d* \\w+\\s*\\w* (\\w+\\s*\\d*)?{1,4}|[^Min Per Session]\\d+ \\w+ \\d*\\s?(\\w+\\s*\\d*)?{1,4}|\\d+\\w* \\w+ \\w+|(^\\d+ \\w+)|^\\S \\d+\\w+ \\w+', 1,1,'i') AS test_address
     
-FROM RAW_SUSHI_PLACES)
+FROM {{ source('raw_data_sources', 'RAW_SUSHI_PLACES') }}
+)
 
 SELECT *
 FROM STD_ADDRESSES

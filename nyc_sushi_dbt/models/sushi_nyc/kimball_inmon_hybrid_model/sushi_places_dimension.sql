@@ -39,8 +39,8 @@ SELECT p.ID,
        p.GOODFORWATCHINGSPORTS,
        p.MENUFORCHILDREN,
        CURRENT_DATE AS LOAD_DATE
-FROM RAW_SUSHI_PLACES p
-INNER JOIN STD_SUSHI_PLACES s
+FROM {{ source('raw_data_sources', 'RAW_SUSHI_PLACES') }} p
+INNER JOIN {{ ref('std_sushi_places') }} s
 ON p.ID = s.ID
 )
 
