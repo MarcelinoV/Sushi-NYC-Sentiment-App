@@ -24,7 +24,7 @@ One for the location-related data, *raw_sushi_places*, and another for the revie
 
 ## Data Transformation & Feature Extraction
 
-![alt_text](./readme_images/sushi_data_model.png "Project Data Model")
+![alt_text](./readme_images/sushi_data_model.png "Presentation Layer Data Model")
 
 ### Snowflake
 
