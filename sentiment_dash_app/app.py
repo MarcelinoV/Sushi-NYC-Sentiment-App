@@ -826,7 +826,7 @@ def update_scatter(selected_sentiment):
         valid_data,
         x='RATING',
         y=selected_sentiment,
-        title=f'Rating vs {selected_y} Sentiment',
+        title=f'Rating vs {selected_y} Sentiment - Citywide',
         labels={'RATING': 'Rating', selected_sentiment: f'{selected_y} Sentiment'},
         trendline='ols',
         hover_data='word_tokens_shortened'
@@ -1405,11 +1405,3 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 80))
     app.run(debug=False, port=port, host='0.0.0.0')
     # app.run(debug=True)
-
-
-
-
-
-
-
-
