@@ -16,7 +16,7 @@ from config import *
 conn_params = {
     'account': ACCOUNT,
     'user': USER,
-    'private_key_file': '*',
+    # 'private_key_file': '*',
     'private_key': PRIVATE_KEY,
     'warehouse': WAREHOUSE,
     'database': DATABASE,
