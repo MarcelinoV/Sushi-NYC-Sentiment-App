@@ -1,20 +1,22 @@
-from dash import Dash, dcc, html, Input, Output, State, html, dash_table, callback_context
+import os
+from dash import Dash, dcc, html, Input, Output, State, html, dash_table, callback_context, no_update
 import dash_bootstrap_components as dbc
 import plotly.express as px
 import pandas as pd
 import snowflake.connector as sc
-from urllib.parse import quote
-# from azure.identity import ManagedIdentityCredential
-# from azure.keyvault.secrets import SecretClient
+from scipy.stats import pearsonr
 from utils import *
+# from dotenv import load_dotenv
+# load_dotenv()
 from config import *
+
 
 # set snowflake connection
 
 conn_params = {
     'account': ACCOUNT,
     'user': USER,
-    # 'private_key_file': private_key_file,
+    'private_key_file': '*',
     'private_key': PRIVATE_KEY,
     'warehouse': WAREHOUSE,
     'database': DATABASE,
@@ -45,16 +47,18 @@ v_sentiment_metrics_by_loc['LONGITUDE'] = pd.to_numeric(v_sentiment_metrics_by_l
 # get weighted confidence score per location
 v_sentiment_metrics_by_loc['WEIGHTED_CONFIDENCE_SCORE'] = weighted_confidence_score(v_sentiment_metrics_by_loc)
 # average sentiment scores overall
-avg_sent_scores = pd.read_sql(avg_sent_query, con=conn)#.T.rename({0:'Average_Score'}, axis=1).reset_index(names='Sentiment Metric')
-# avg_sent_scores.columns = [col.upper() for col in avg_sent_scores.columns]
+avg_sent_scores = pd.read_sql(avg_sent_query, con=conn)
+# review info for table
 v_review_info = pd.read_sql(review_info_query, con=conn)
+# review text & scores for lda
+text_n_scores = sushi_reviews[['REVIEW_ID', 'PLACE_ID', 'TEXT', 'RATING']].merge(sushi_sentiment, on="REVIEW_ID")
 
 # Default values for dropdowns
 default_borough = ["All"]
 default_price_level = ["All"]
 default_restaurant_type = ['All']
 default_rating_count = [0, 100]  # Default range for a slider
-default_wc_title = 'Most Frequent Words - Citywide'
+default_wc_title = 'Most Frequent Words - Citywide (Changes w/ City Selection via Map)'
 default_rating_title = 'Average Citywide Sushi Rating'
 agg_positive_rating_title = 'Average Positive Sentiment Score'
 agg_neutral_rating_title = 'Average Neutral Sentiment Score'
@@ -78,7 +82,7 @@ default_map_fig = px.scatter_map(
     zoom=11,  # Zoom level (adjust for best view)
     height=550,
     width=1200,
-    hover_data=['ADDRESS', 'USERRATINGCOUNT']
+    hover_data=['ADDRESS', 'USERRATINGCOUNT', "DISPLAYNAME_TEXT"]
 )
 
 # Add an empty trace for the selected location
@@ -156,6 +160,12 @@ overall_rating_max = max(v_sentiment_metrics_by_loc['OVERALL_RATING'].tolist())
 weighted_conf_min = min(v_sentiment_metrics_by_loc['WEIGHTED_CONFIDENCE_SCORE'].tolist())
 weighted_conf_max = max(v_sentiment_metrics_by_loc['WEIGHTED_CONFIDENCE_SCORE'].tolist())
 
+lda_ngram_min = 1
+lda_ngram_max = 4
+
+default_lda, default_vectorizer, default_X = lda_builder(text_n_scores, 3, (lda_ngram_min,lda_ngram_max), 'Neutral')
+default_topic_df = lda_to_df(default_lda, default_vectorizer, default_X)
+default_lda_viz = lda_visual(default_topic_df, place_name='Citywide', type_='Neutral')
 
 review_data_table = v_review_info.merge(sushi_places[['ID', 'DISPLAYNAME_TEXT', 'ADDRESS', 'BOROUGH']], left_on='PLACE_ID', right_on='ID')
 visual_cols = ['REVIEW_ID', 'DISPLAYNAME_TEXT', 'TEXT', 'ADDRESS', 'BOROUGH', 'RATING', 'PUBLISHTIME']
@@ -168,6 +178,7 @@ app = Dash(__name__,
                                  dbc.icons.FONT_AWESOME,
                                  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css']
            )
+
 # Initialize Flask server
 server = app.server
 
@@ -191,14 +202,14 @@ sidebar = html.Div(
     [
         html.H2("Filters", className="display-4"),
         html.Hr(),
-        html.P("Select a Model:", className="lead"),
-        dcc.Dropdown(
-            id="dropdown-model",
-            options=[{"label": key, "value": key} for key in column_groups.keys()],
-            value='All',  # Default selection
-            clearable=False,
-            multi=False
-        ),
+        # html.P("Select a Model:", className="lead"),
+        # dcc.Dropdown(
+        #     id="dropdown-model",
+        #     options=[{"label": key, "value": key} for key in column_groups.keys()],
+        #     value='All',  # Default selection
+        #     clearable=False,
+        #     multi=False
+        # ),
         # Add more filters or text here if needed
         # Borough Filter
         html.P("Borough", className="lead"),
@@ -321,7 +332,7 @@ content = html.Div(
     [
         html.H1("Sushi in NYC - Sentiment Analysis", style={"textAlign": "center"}),
         html.H3("🍙 Click on a location to learn more about it 🍣", style={"textAlign": "center"}),
-        dcc.Store(id='filter-store', data={}),
+        dcc.Store(id='filter-store'),
         html.Div(
             dbc.Row([
                 dbc.Col([
@@ -429,32 +440,120 @@ content = html.Div(
 
         html.Br(),
 
-        dbc.Container(
-            dbc.Row(
-                [
-                    dbc.Col(
-                        [
-                            html.H4(default_barchart_title, id='barchart-title', className="text-center"),
-                            dcc.Graph(id='sentiment-bar-chart', style={"width": "100%"})  # Sentiment bar chart
-                        ],
-                        width=6,
-                        className="pe-3"  # Padding right using Bootstrap utility
-                    ),  # Left column (sentiment bar chart)
+        html.Div([
+            html.H2("Explore Sushi Review Context", style={"textAlign": "center"}),
 
-                    dbc.Col(
-                        [
-                            html.H4(f"{default_wc_title}", id='wordcloud-title', className="text-center"),
-                            html.Img(id='wordcloud-image', src="", style={"width": "100%", "height": "auto"})  # Wordcloud
+            html.Div([
+                # LEFT: TABS + GRAPHS
+                html.Div([
+                    dcc.Tabs(id="viz-tabs", value='sent-scatter-corr', children=[
+                        dcc.Tab(label='Review Rating vs Sentiment Score', value='sent-scatter-corr'),
+                        dcc.Tab(label='Wordcloud', value='wordcloud-image'),
+                        dcc.Tab(label='LDA Topic Discovery', value='lda-tab')
+                    ]),
+
+                    html.Div([
+                        dcc.Graph(id='sentiment-scatter-corr', style={"width": "100%"}, className="viz-plot"),
+                    ], id='sentiment-tab-content', style={"display": "block"}),
+
+                    html.Div([
+                        html.H3(id='wordcloud-title'),
+                        html.Img(id='wordcloud-image', style={"width": "100%", "height": "auto"}),
+                    ], id='wordcloud-tab-content', style={"display": "none"}),
+
+                    html.Div([
+                        dcc.Loading(
+                            id="loading-lda",
+                            type="circle",
+                            children=[dcc.Graph(id="lda-viz", style={"width": "100%"})]
+                        )
+                    ], id='lda-tab-content', style={"display": "none"}),
+                ], style={
+                    "border": "1px solid #ccc",
+                    "borderRadius": "5px",
+                    "boxShadow": "2px 2px 8px rgba(0,0,0,0.1)",
+                    "width": "75%",
+                    "padding": "10px"
+                }),
+
+                # RIGHT: LDA FILTER SIDEBAR
+                html.Div([
+                    html.Label("Select Review Sentiment:", style={"fontWeight": "bold", "marginBottom": "10px"}),
+                    dcc.RadioItems(
+                        id='lda-radio-filter',
+                        options=[
+                            {"label": "Positive", "value": "Positive"},
+                            {"label": "Negative", "value": "Negative"},
+                            {"label": "Neutral", "value": "Neutral"},
                         ],
-                        width=6,
-                        className="ps-3"  # Padding left using Bootstrap utility
-                    )  # Right column (Wordcloud)
-                ],
-                justify="between"
-            ),
-            className="py-4",  # Padding top and bottom for the container
-            fluid=True
-        ),
+                        value="Neutral",
+                        labelStyle={'display': 'block'}
+                    ),
+                    html.Br(),
+                    html.Label("Select Number of Topics:", style={"fontWeight": "bold", "marginBottom": "10px"}),
+                    dcc.Dropdown(
+                        id="lda-dropdown-filter",
+                        options=[
+                        {'label': i+1, 'value': i+1} for i in range(2,10)       # Option to include both True and False     
+                        ],
+                        value=3,  # Default selection
+                        clearable=False,
+                        multi=False
+                    ),
+                    html.Br(),
+                    html.Label("Select N-gram Range:", style={"fontWeight": "bold", "marginBottom": "10px"}),
+                    dcc.RangeSlider(
+                        lda_ngram_min,
+                        lda_ngram_max,
+                        id="lda-slider-filter",
+                        value=[lda_ngram_min,
+                            lda_ngram_max],  # Default selection
+                        step=1
+                    ),
+                    # html.Br(),
+                    # dcc.Graph(id="lda-topic-treemap", style={"width": "100%"})
+                ], id='lda-filters-container', style={
+                    "display": "none",  # hidden by default
+                    "marginLeft": "20px",
+                    "padding": "20px",
+                    "border": "1px solid #ccc",
+                    "borderRadius": "5px",
+                    "boxShadow": "2px 2px 8px rgba(0,0,0,0.1)",
+                    "height": "fit-content",
+                    "width": "200px"
+                }),
+
+                html.Div([
+                    html.Label("Select Sentiment Score:", style={"fontWeight": "bold", "marginBottom": "10px"}),
+                    dcc.RadioItems(
+                        id='sentiment-selector',
+                        options=[
+                            {'label': 'Positive', 'value': 'BASE_POS'},
+                            {'label': 'Negative', 'value': 'BASE_NEG'},
+                            {'label': 'Neutral', 'value': 'BASE_NEU'}
+                        ],
+                        value='BASE_POS',
+                        labelStyle={'display': 'inline-block', 'marginRight': '10px'}
+                    )
+                ], id='scatter-corr-filters-container', style={
+                    "display": "none",  # hidden by default
+                    "marginLeft": "20px",
+                    "padding": "20px",
+                    "border": "1px solid #ccc",
+                    "borderRadius": "5px",
+                    "boxShadow": "2px 2px 8px rgba(0,0,0,0.1)",
+                    "height": "fit-content",
+                    "width": "200px"
+                }),
+            ], style={
+                "display": "flex",
+                "flexDirection": "row",
+                "justifyContent": "center",
+                "gap": "20px",
+                "margin": "auto",
+                "width": "90%"
+            }),
+        ]),
 
         html.Br(),
         # Dropdown for selecting 3D scatter plot columns
@@ -632,48 +731,133 @@ style={"padding":"0"})
 
 # callbacks
 
+# callback for tab switching
 @app.callback(
-    Output('sentiment-bar-chart', 'figure', allow_duplicate=True),
-    [Input('dropdown-model', 'value')],
-    prevent_initial_call=True
+    Output('sentiment-tab-content', 'style'),
+    Output('wordcloud-tab-content', 'style'),
+    Output('lda-tab-content', 'style'),
+    Output('lda-filters-container', 'style'),
+    Output('scatter-corr-filters-container', 'style'),
+    Input('viz-tabs', 'value'),
 )
-def update_sentiment_chart(selected_model):
-    # Filter data based on selected model
-    model_score_map = pd.DataFrame(flattened_metrics)
-    try:
-        selected_columns = column_groups[selected_model]
-    except KeyError:
-        selected_columns = group_vals
-    df_melted = avg_sent_scores.melt(value_vars=selected_columns, var_name="Sentiment Metric", value_name="Score") \
-         .merge(model_score_map, on='Sentiment Metric')
-    if selected_model == "All":
-        filtered_df = df_melted  # Show all models
-        color_col = "Model"  # Color by Model when "All" is selected
-    else:
-        filtered_df = df_melted[df_melted["Model"] == selected_model]  # Filter specific model
-        color_col = "Model"  # Keep color by Model even when filtering
+def toggle_visualizations(selected_tab):
+    if selected_tab == 'sent-scatter-corr': # add corr filters return
+        return {"display": "block"}, {"display": "none"}, {"display": "none"}, {"display": "none"}, {
+            "display": "block",
+            "marginLeft": "20px",
+            "padding": "20px",
+            "border": "1px solid #ccc",
+            "borderRadius": "5px",
+            "boxShadow": "2px 2px 8px rgba(0,0,0,0.1)",
+            "height": "fit-content",
+            "width": "200px"
+        }
+        
+    elif selected_tab == 'wordcloud-image':
+        return {"display": "none"}, {"display": "block"}, {"display": "none"}, {"display": "none"}, {"display": "none"}
+    elif selected_tab == 'lda-tab':
+        return {"display": "none"}, {"display": "none"}, {"display": "block"}, {
+            "display": "block",
+            "marginLeft": "20px",
+            "padding": "20px",
+            "border": "1px solid #ccc",
+            "borderRadius": "5px",
+            "boxShadow": "2px 2px 8px rgba(0,0,0,0.1)",
+            "height": "fit-content",
+            "width": "200px"
+        }, {"display": "none"}
 
-    # Create the bar chart
-    fig = px.bar(
-        filtered_df,
-        x="Sentiment Metric",
-        y="Score",
-        color=color_col,  # Keep the color logic consistent
-        title="Average Sentiment Score by Model",
-        text_auto=True
+
+# callback for switching model on sentiment bar chart
+# @app.callback(
+#     Output('sentiment-bar-chart', 'figure', allow_duplicate=True),
+#     [Input('dropdown-model', 'value')],
+#     prevent_initial_call=True
+# )
+# def update_sentiment_chart(selected_model):
+#     # Filter data based on selected model
+#     model_score_map = pd.DataFrame(flattened_metrics)
+#     try:
+#         selected_columns = column_groups[selected_model]
+#     except KeyError:
+#         selected_columns = group_vals
+#     df_melted = avg_sent_scores.melt(value_vars=selected_columns, var_name="Sentiment Metric", value_name="Score") \
+#          .merge(model_score_map, on='Sentiment Metric')
+#     if selected_model == "All":
+#         filtered_df = df_melted  # Show all models
+#         color_col = "Model"  # Color by Model when "All" is selected
+#     else:
+#         filtered_df = df_melted[df_melted["Model"] == selected_model]  # Filter specific model
+#         color_col = "Model"  # Keep color by Model even when filtering
+
+#     # Create the bar chart
+#     fig = px.bar(
+#         filtered_df,
+#         x="Sentiment Metric",
+#         y="Score",
+#         color=color_col,  # Keep the color logic consistent
+#         title="Average Sentiment Score by Model",
+#         text_auto=True
+#     )
+
+#     # Improve visualization
+#     fig.update_traces(marker=dict(line=dict(width=1, color="black")))
+#     fig.update_layout(yaxis=dict(title="Average Score"), xaxis=dict(title=""), showlegend=True)
+
+#     return fig
+
+@app.callback(
+    Output('sentiment-scatter-corr', 'figure'),
+    Input('sentiment-selector', 'value')
+)
+def update_scatter(selected_sentiment):
+    mapper = {
+        'BASE_POS': 'Positive',
+        'BASE_NEG': 'Negative',
+        'BASE_NEU': 'Neutral'
+    }
+    selected_y = mapper[selected_sentiment]
+
+    # Drop rows with NaN or inf in RATING or selected sentiment column
+    valid_data = text_n_scores[['RATING', selected_sentiment, 'WORD_TOKENS']].replace([np.inf, -np.inf], np.nan).dropna().sample(n=300, random_state=1)
+    valid_data['word_tokens_shortened'] = [ast.literal_eval(tokens)[:10] for tokens in valid_data['WORD_TOKENS']]
+
+    fig = px.scatter(
+        valid_data,
+        x='RATING',
+        y=selected_sentiment,
+        title=f'Rating vs {selected_y} Sentiment',
+        labels={'RATING': 'Rating', selected_sentiment: f'{selected_y} Sentiment'},
+        trendline='ols',
+        hover_data='word_tokens_shortened'
     )
 
-    # Improve visualization
-    fig.update_traces(marker=dict(line=dict(width=1, color="black")))
-    fig.update_layout(yaxis=dict(title="Average Score"), xaxis=dict(title=""), showlegend=True)
+    # Calculate correlation safely
+    corr, _ = pearsonr(valid_data['RATING'], valid_data[selected_sentiment])
+
+    fig.update_traces(marker=dict(size=10, color='LightSkyBlue'))
+
+    fig.add_annotation(
+        x=0.5,
+        y=1.1,
+        xref='paper',
+        yref='paper',
+        text=f"<b>Correlation (r): {corr:.2f}</b>",
+        showarrow=False,
+        font=dict(size=14, color="white"),
+        align="center"
+    )
+
+    fig.update_layout(template="plotly_dark")
 
     return fig
 
 
+# callback for changing summary metrics and visuals based on clicked location
 
 @app.callback(
 
-    Output("sentiment-bar-chart", "figure"),
+   # Output("sentiment-bar-chart", "figure"),
     Output("loc-rating", "children"),
     Output("rating-title", "children"),
     Output("pos-loc-rating", "children"),
@@ -692,7 +876,7 @@ def update_detail_graph(click_data):
 
     if click_data is None: # Handle case where no point is clicked
 
-        return  update_chart_glo(group_vals, flattened_metrics, avg_sent_scores), presentation_avg_rating, default_rating_title, presentation_pos_avg_rating, agg_positive_rating_title, presentation_neu_avg_rating, agg_neutral_rating_title, presentation_neg_avg_rating, agg_negative_rating_title, default_google_href, default_google_style
+        return  presentation_avg_rating, default_rating_title, presentation_pos_avg_rating, agg_positive_rating_title, presentation_neu_avg_rating, agg_neutral_rating_title, presentation_neg_avg_rating, agg_negative_rating_title, default_google_href, default_google_style
 
     selected_lat = click_data["points"][0]["lat"]
 
@@ -701,6 +885,8 @@ def update_detail_graph(click_data):
     selected_add = click_data["points"][0]['customdata'][1]
 
     selected_name = click_data["points"][0]["hovertext"].replace("'", "\\'")
+
+    # print(click_data)
 
     # Filter data based on selected coordinates (implement your filtering logic here)
 
@@ -724,22 +910,22 @@ def update_detail_graph(click_data):
 
     # prep bar chart
 
-    filter_cols = [col for col in restaurant.columns if 'AVG' in col or col == 'DISPLAYNAME_TEXT']
+    # filter_cols = [col for col in restaurant.columns if 'AVG' in col or col == 'DISPLAYNAME_TEXT']
 
-    filtered_df = restaurant[filter_cols]
-    value_vars = [i for i in filter_cols if i != 'DISPLAYNAME_TEXT']
-    model_score_map = pd.DataFrame(flattened_metrics)
+    # filtered_df = restaurant[filter_cols]
+    # value_vars = [i for i in filter_cols if i != 'DISPLAYNAME_TEXT']
+    # model_score_map = pd.DataFrame(flattened_metrics)
 
-    melt_df = filtered_df.melt(value_vars=value_vars, var_name="Sentiment Metric", value_name="Score") \
-        .merge(model_score_map, on='Sentiment Metric')
+    # melt_df = filtered_df.melt(value_vars=value_vars, var_name="Sentiment Metric", value_name="Score") \
+    #     .merge(model_score_map, on='Sentiment Metric')
 
-    # Create bar chart
-    fig = px.bar(melt_df, x="Sentiment Metric", y="Score", 
-                 text_auto=True, title=f"Average {selected_name} Model Scores", color="Model")
+    # # Create bar chart
+    # fig = px.bar(melt_df, x="Sentiment Metric", y="Score", 
+    #              text_auto=True, title=f"Average {selected_name} Model Scores", color="Model")
 
-    # Improve visualization
-    fig.update_traces(marker=dict(line=dict(width=1, color="black")))
-    fig.update_layout(yaxis=dict(title="Average Score"), xaxis=dict(title="Metric"), showlegend=True)
+    # # Improve visualization
+    # fig.update_traces(marker=dict(line=dict(width=1, color="black")))
+    # fig.update_layout(yaxis=dict(title="Average Score"), xaxis=dict(title="Metric"), showlegend=True)
 
     # serve google button
         # Generate the Google Maps URL
@@ -749,7 +935,7 @@ def update_detail_graph(click_data):
 
     google_style = {"display": "inline-block"}
 
-    return fig, restaurant_rating, restaurant_rating_title, pos_restaurant_rating, pos_restaurant_rating_title, neu_restaurant_rating, neu_restaurant_rating_title, neg_restaurant_rating, neg_restaurant_rating_title, google_maps_url, google_style
+    return restaurant_rating, restaurant_rating_title, pos_restaurant_rating, pos_restaurant_rating_title, neu_restaurant_rating, neu_restaurant_rating_title, neg_restaurant_rating, neg_restaurant_rating_title, google_maps_url, google_style
 
 # filters for updating map
 @app.callback(
@@ -883,7 +1069,7 @@ def update_map(
         zoom=11,  # Zoom level (adjust for best view)
         height=550,
         width=1200,
-        hover_data=['ADDRESS', 'USERRATINGCOUNT']
+        hover_data=['ADDRESS', 'USERRATINGCOUNT', 'DISPLAYNAME_TEXT']
     )
 
     # Use OpenStreetMap (OSM) as the base layer
@@ -927,6 +1113,70 @@ def update_wordcloud(click_data):
         get_wordcloud = wordcloud_viz(restaurant)
         
         return f"data:image/png;base64,{get_wordcloud}", f'Most Frequent Words - {selected_name}'
+    
+# lda callback
+
+@app.callback(
+    Output('lda-viz', 'figure'),
+    Output('filter-store', 'data'),
+   # Output('wordcloud-title', 'children', allow_duplicate=True),
+  #  Input("sushi-map", "clickData"),  # Input that triggers the update
+    Input("lda-radio-filter", "value"),
+    Input("lda-dropdown-filter", "value"),
+    Input("lda-slider-filter", "value"),
+    Input('reset-button', 'n_clicks'),
+   # State('reset-button', 'n_clicks'),
+    prevent_initial_call='initial_duplicate'
+)
+def update_lda(review_type, topic_count, ngram_range, reset_triggered):
+    # Get the context of the triggered input
+    ctx = callback_context
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if triggered_id == 'reset-button':
+        return default_lda_viz, no_update
+
+    try:
+        min_ngram, max_ngram = ngram_range
+        lda, vectorizer, X = lda_builder(text_n_scores, topic_count, (min_ngram, max_ngram), review_type)
+        topic_df = lda_to_df(lda, vectorizer, X)
+        lda_viz = lda_visual(topic_df, 'Citywide', review_type)
+        return lda_viz, topic_df.to_json(date_format='iso', orient='split')
+    except ValueError:
+        print("Fallback also failed.")
+        return default_lda_viz, no_update
+
+# for future update
+# # treemap callback
+# @app.callback(
+#     Output("lda-topic-treemap", "figure"),
+#     Input("lda-viz", "clickData"),
+#     State('filter-store', 'data'),
+#     prevent_initial_call=True
+# )
+# def update_treemap(clickData, topic_df_json):
+#     if not clickData or not topic_df_json:
+#         raise exceptions.PreventUpdate
+
+#     topic_df = pd.read_json(topic_df_json, orient='split')
+#     print(clickData)
+#     topic_label = clickData['points'][0]['customdata'][0]  # or ['text'] depending on your setup
+
+#     topic_data = topic_df[topic_df['topic'] == topic_label]
+#     if topic_data.empty:
+#         raise exceptions.PreventUpdate
+
+#     words = topic_data['top_words'].values[0].split(', ')
+#     treemap_df = pd.DataFrame({
+#         'labels': words,
+#         'parents': [''] * len(words),
+#         'values': [1] * len(words)  # Uniform size for now
+#     })
+
+#     fig = px.treemap(treemap_df, path=['parents', 'labels'], values='values',
+#                      title=f"Top Words for {topic_label}")
+#     return fig
+
 
 # callback for highlighting selected locations
 
@@ -935,7 +1185,7 @@ def update_wordcloud(click_data):
     Input('sushi-map', 'clickData'),  # Input from the map's click data.
     prevent_initial_call=True
 )
-def highlight_selected_location(click_data):
+def highlight_selected_location(click_data):    
     # Create a copy of the initial map figure
     updated_fig = default_map_fig
 
@@ -976,8 +1226,8 @@ def highlight_selected_location(click_data):
         Output('loc-rating', 'children', allow_duplicate=True),
         Output('rating-title', 'children', allow_duplicate=True),
         Output('wordcloud-title', 'children'),
-        Output('dropdown-model', 'value'),
-        Output('barchart-title', 'children'),
+      #  Output('dropdown-model', 'value'),
+      #  Output('barchart-title', 'children'),
         Output("pos-loc-rating", "children", allow_duplicate=True),
         Output("pos-rating-title", "children", allow_duplicate=True),
         Output("neu-loc-rating", "children", allow_duplicate=True),
@@ -989,6 +1239,10 @@ def highlight_selected_location(click_data):
         Output('dropdown-wc-accessible-entrance', 'value'),
         Output('google-button', 'href', allow_duplicate=True),
         Output('google-button', 'style', allow_duplicate=True),
+        Output('lda-radio-filter', 'value', allow_duplicate=True),
+        Output('lda-dropdown-filter', 'value', allow_duplicate=True),
+        Output('lda-slider-filter', 'value', allow_duplicate=True),
+        Output('lda-viz', 'figure', allow_duplicate=True)
     ],
     [Input('reset-button', 'n_clicks')],  # Triggered by the reset button
     prevent_initial_call=True  # Prevent the callback from firing on initial load
@@ -1007,8 +1261,8 @@ def reset_filters(n_clicks):
         presentation_avg_rating,
         default_rating_title,
         default_wc_title,
-        default_bar_chart,
-        default_barchart_title,
+      #  default_bar_chart,
+      #  default_barchart_title,
         presentation_pos_avg_rating,
         agg_positive_rating_title, 
         presentation_neu_avg_rating, 
@@ -1019,7 +1273,11 @@ def reset_filters(n_clicks):
         None,
         None,
         default_google_href, 
-        default_google_style
+        default_google_style,
+        'Neutral',
+        3,
+        [lda_ngram_min, lda_ngram_max],
+        default_lda_viz
     )
 
 # callback for 3d scatter & table interactions
@@ -1063,35 +1321,57 @@ def update_3d_scatter(selected_option):
     if not selected_option:
         selected_option = 'NLTK VADER'
 
+    # Copy the base DataFrame
+    sushi_sent_copy = sushi_sentiment.copy()
+
+    # Title handling
     if selected_option == 'Special':
         title = 'Subjectivity, Polarity, Compound Score'
     else:
         title = 'Positive, Negative, Neutral'
 
-    cols = sentiment_model_dict[selected_option]  # Get selected columns
-    fig = px.scatter_3d(sushi_sentiment, x=cols[0], y=cols[1], z=cols[2], 
-                        color=cols[0], 
-                        title=f"3D Scatter Plot - {title}",
-                        height=900,
-                        width=1200,
-                        custom_data=['REVIEW_ID']
-                        )
-    
-    # Expanding the grid by modifying axis properties
+    # Get raw column names for the selected sentiment model
+    raw_cols = sentiment_model_dict[selected_option]
 
+    # Create a mapping of raw column names to friendly ones
+    if selected_option == 'Special':
+        col_map = produce_axes(raw_cols, special=True)
+    else:
+        col_map = produce_axes(raw_cols, special=False)
 
+    # Rename columns in the dataframe
+    sushi_sent_copy.rename(columns=col_map, inplace=True)
+
+    # Get the friendly column names (new names after renaming)
+    new_cols = list(col_map.values())
+
+    # Build the 3D scatter plot
+    fig = px.scatter_3d(
+        sushi_sent_copy,
+        x=new_cols[0],
+        y=new_cols[1],
+        z=new_cols[2],
+        color=new_cols[0],
+        title=f"3D Scatter Plot - {title}",
+        height=900,
+        width=1200,
+        custom_data=['REVIEW_ID']
+    )
+
+    # Expand the grid range using the renamed columns
     fig.update_layout(
         scene=dict(
-            xaxis=dict(range=[sushi_sentiment[cols[0]].min() - 0.5, sushi_sentiment[cols[0]].max() + 0.5], showgrid=True),
-            yaxis=dict(range=[sushi_sentiment[cols[1]].min() - 0.5, sushi_sentiment[cols[1]].max() + 0.5], showgrid=True),
-            zaxis=dict(range=[sushi_sentiment[cols[2]].min() - 0.5, sushi_sentiment[cols[2]].max() + 0.5], showgrid=True),
-            aspectmode="cube",  # Keeps all axes equally scaled
+            xaxis=dict(range=[sushi_sent_copy[new_cols[0]].min() - 0.5, sushi_sent_copy[new_cols[0]].max() + 0.5], showgrid=True),
+            yaxis=dict(range=[sushi_sent_copy[new_cols[1]].min() - 0.5, sushi_sent_copy[new_cols[1]].max() + 0.5], showgrid=True),
+            zaxis=dict(range=[sushi_sent_copy[new_cols[2]].min() - 0.5, sushi_sent_copy[new_cols[2]].max() + 0.5], showgrid=True),
+            aspectmode="cube"
         ),
         legend=dict(
-        x=0.7,  # Moves legend outside the plot area
-        y=1,  # Keeps it aligned at the top
-        bgcolor="rgba(255,255,255,0.7)",  # Optional: Adds a semi-transparent background
-    )
+            x=0.7,
+            y=1,
+            bgcolor="rgba(255,255,255,0.7)"
+        ),
+        template="plotly_dark"
     )
 
     return fig
@@ -1124,6 +1404,8 @@ if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 80))
     app.run(debug=False, port=port, host='0.0.0.0')
+    # app.run(debug=True)
+
 
 
 
